@@ -4,7 +4,6 @@
 
 use aoc_runner_derive::*;
 
-mod elf_benchmarker;
 mod day6;
 
 

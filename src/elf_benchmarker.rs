@@ -4,7 +4,7 @@ const LENGTH: u16 = 256;
 pub fn run(inp: &str) -> i64 {
     let weeks = LENGTH / 7;
 
-    let mut ages: [u64; 9] = inp.split(',').fold([0; 9], |mut res, num| {
+    let mut ages: [u64; 9] = inp.as_bytes().chunks_exact(2).fold([0; 9], |mut res, num| {
         unsafe {
             *res.get_unchecked_mut((*num.as_bytes().get_unchecked(0) as usize) - '0' as usize) += 1;
             res
