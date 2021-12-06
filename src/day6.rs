@@ -1,14 +1,23 @@
-const LENGTH: u16 = 256;
+use aoc_runner_derive::*;
 
 
-pub fn run(inp: &str) -> i64 {
-    let weeks = LENGTH / 7;
+#[aoc(day6, part1)]
+pub fn solve6_part1(inp: &str) -> u64 {
+    run(&inp, 80)
+}
+
+#[aoc(day6, part2)]
+pub fn solve6_part2(inp: &str) -> u64 {
+    run(&inp, 256)
+}
+
+fn run(inp: &str, length: u16) -> u64 {
+    let weeks = length / 7;
 
     let mut ages: [u64; 9] = inp.split(',').fold([0; 9], |mut res, num| {
         unsafe {
             *res.get_unchecked_mut((*num.as_bytes().get_unchecked(0) as usize) - '0' as usize) += 1;
             res
-
         }
     });
 
@@ -33,6 +42,5 @@ pub fn run(inp: &str) -> i64 {
 
     }
 
-    let remainder = ages.into_iter().take(((LENGTH) % 7) as usize).sum::<u64>();
-    (ages.iter().sum::<u64>() + remainder) as i64
+    ages.iter().sum::<u64>() + ages.into_iter().take(((length) % 7) as usize).sum::<u64>()
 }
