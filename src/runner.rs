@@ -1,13 +1,13 @@
 #![feature(destructuring_assignment)]
 use aoc_runner_derive::aoc_main;
-/*
-mod day6;
+
+mod day10;
 aoc_main!{ year = 2021 }
 
- */
 
 
 
+/*
 
 mod elf_benchmarker;
 use std::fs;
@@ -21,6 +21,8 @@ fn main() {
 
 
 
+
+ */
 
 
 

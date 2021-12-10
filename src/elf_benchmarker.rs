@@ -1,22 +1,19 @@
 const LENGTH: u16 = 256;
-
+const WEEKS: usize = (LENGTH / 7) as usize;
+const FISH_COUNT: u16 = 300;
 
 pub fn run(inp: &str) -> i64 {
-    let weeks = LENGTH / 7;
+    let mut ages: [i64; 9] = [0; 9];
 
-    let mut ages: [u64; 9] = inp.as_bytes().chunks_exact(2).fold([0; 9], |mut res, num| {
+    inp.as_bytes().chunks_exact(2).for_each(|num| {
         unsafe {
-            *res.get_unchecked_mut((*num.get_unchecked(0) as usize) - '0' as usize) += 1;
-            res
-
+            *ages.get_unchecked_mut((*num.get_unchecked(0) as usize) - '0' as usize) += 1;
         }
     });
 
-    for _ in 0..weeks {
-        // println!("{:?}, sum: {}", ages, ages.iter().sum::<u64>());
+    std::iter::repeat(()).take(WEEKS as usize).for_each(|()| {
         let sixth = ages[6].clone();
         let fifth = ages[5].clone();
-
 
         ages[6] += ages[4];
         ages[5] += ages[3];
@@ -30,9 +27,7 @@ pub fn run(inp: &str) -> i64 {
 
         ages[8] = sixth;
         ages[7] = fifth;
+    });
 
-    }
-
-    let remainder = ages.into_iter().take(((LENGTH) % 7) as usize).sum::<u64>();
-    (ages.iter().sum::<u64>() + remainder) as i64
+    ages.iter().sum::<i64>() + ages.into_iter().take(((LENGTH) % 7) as usize).sum::<i64>()
 }
