@@ -4,7 +4,7 @@
 
 use aoc_runner_derive::*;
 
-mod day10;
+mod day16;
 
 
 aoc_lib! { year = 2021 }

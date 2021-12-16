@@ -48,21 +48,25 @@ impl BracketType {
 pub fn solve_10(inp: &str) -> u32 {
     inp.as_bytes().split(|char| char == &('\n' as u8)).map(|line| {
         let mut stack_index: usize = 0;
-        // let mut stack: MaybeUninit<[BracketType; 110]> = unsafe {MaybeUninit::uninit().assume_init()};
-        let mut stack: [BracketType; 110] = [BracketType::Sharp; 110];
+        let mut stack: MaybeUninit<[BracketType; 110]> = unsafe {MaybeUninit::uninit().assume_init()};
+        // let mut stack: [BracketType; 110] = [BracketType::Sharp; 110];
 
         let corrupted: Option<BracketType> = line.iter().find_map(|b| {
             let (bracket, opening) = BracketType::from_byte(b);
             if opening {
-                stack[stack_index] = bracket;
-                stack_index += 1;
+                unsafe {
+                    *stack.assume_init().get_unchecked_mut(stack_index) = bracket;
+                    stack_index += 1;
+                }
                 None
             } else {
-                if stack[stack_index-1] != bracket {
-                    Some(bracket)
-                } else {
-                    stack_index -= 1;
-                    None
+                unsafe {
+                    if *stack.assume_init().get_unchecked(stack_index - 1) != bracket {
+                        Some(bracket)
+                    } else {
+                        stack_index -= 1;
+                        None
+                    }
                 }
             }
         });
