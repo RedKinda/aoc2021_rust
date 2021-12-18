@@ -9,60 +9,67 @@ enum Action {
     AddLeft(u8)
 }
 
-struct Fishe {
-    value: u8
+enum FishNode {
+    Pair(Fishpair),
+    Literal(Fishe)
 }
 
-impl Fishelike for Fishe {
-    fn validate(&mut self, depth: u8) -> Vec<Action> {
-        if self.value > 9 {
-            return vec![Action::Explode]
-        }
-        vec![]
-    }
-}
-
-struct Fishpair {
-    left: Box<dyn Fishelike>,
-    right: Box<dyn Fishelike>
-}
-
-
-impl Fishelike for Fishpair {
+impl FishNode {
     fn validate(&mut self, depth: u8) -> Vec<Action> {
         if depth == 4 {
             return vec!(Action::Split);
         }
         let mut return_actions = vec![];
-        let left_actions = self.left.validate(depth+1);
-        for a in left_actions {
-            match a {
-                Action::Explode => {
-                    
+
+        match self {
+            FishNode::Pair(pair) => {
+                let left_actions = pair.left.validate(depth+1);
+                for a in left_actions {
+                    match a {
+                        Action::Explode => {
+
+                        }
+                        Action::Split => {}
+                        Action::AddRight(_) => {}
+                        Action::AddLeft(_) => {}
+                    }
                 }
-                Action::Split => {}
-                Action::AddRight(_) => {}
-                Action::AddLeft(_) => {}
             }
+            FishNode::Literal(val) => {}
         }
+
+
 
         return_actions
     }
+
 }
 
+struct Fishe {
+    value: u8
+}
+
+
+struct Fishpair {
+    left: Box<FishNode>,
+    right: Box<FishNode>
+}
+
+
 impl Fishpair {
-    fn from_inp(mut inp: &mut Chars) -> Box<dyn Fishelike> {
-        let mut new: Box<dyn Fishelike>;
+
+    fn from_inp(mut inp: &mut Chars) -> Box<FishNode> {
+        let mut new: Box<FishNode>;
         match inp.next().unwrap() {
             '[' => {
                 let left = Fishpair::from_inp(inp);
                 inp.next();   // This is the separating comma
                 let right = Fishpair::from_inp(inp);
-                new = Box::new(Fishpair{ left, right });
+                new = Box::new(FishNode::Pair(Fishpair{ left, right }));
                 inp.next(); // Closing bracket
             },
             num => {
-                new = Box::new(Fishe{ value: (num as u8) - ('0' as u8) })
+                new = Box::new(FishNode::Literal(Fishe{ value: (num as u8) - ('0' as u8) }))
             }
         }
 
@@ -70,16 +77,11 @@ impl Fishpair {
     }
 
 
-    fn add(first: Box<dyn Fishelike>, second: Box<dyn Fishelike>) -> Box<Fishpair> {
-        let mut new = Box::new(Fishpair { left: first, right:  second });
+    fn add(first: Box<FishNode>, second: Box<FishNode>) -> FishNode {
+        let mut new = FishNode::Pair(Fishpair { left: first, right:  second });
         new.validate(0);
         new
     }
-}
-
-trait Fishelike {
-    fn validate(&mut self, depth: u8) -> Vec<Action>;
-
 }
 
 
@@ -91,7 +93,7 @@ fn sol1(inp: &str) -> u64{
 
     let mut base = pairs.next().unwrap();
     for p in pairs {
-        base = Fishpair::add(base, p);
+        base = Box::from(Fishpair::add(base, p));
     }
 
     println!("done");
