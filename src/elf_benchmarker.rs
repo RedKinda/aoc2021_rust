@@ -1,76 +1,141 @@
-#![allow(arithmetic_overflow)]
-use std::mem::MaybeUninit;
+use std::fmt::{Debug, Display, Formatter};
+use bitvec::prelude::*;
 
-const PART1: bool = true;
-const ROUND_OPEN: u8 = '(' as u8;
-const ROUND_CLOSE: u8 = ')' as u8;
-const SQUARE_OPEN: u8 = '[' as u8;
-const SQUARE_CLOSE: u8 = ']' as u8;
-const CURLY_OPEN: u8 = '{' as u8;
-const CURLY_CLOSE: u8 = '}' as u8;
-const SHARP_OPEN: u8 = '<' as u8;
-const SHARP_CLOSE: u8 = '>' as u8;
-
-#[derive(PartialEq, Copy, Clone)]
-enum BracketType {
-    Round,
-    Square,
-    Curly,
-    Sharp
+struct Packet {
+    version: u8,
+    type_id: u8,
+    packet_type: PacketType
 }
 
-impl BracketType {
-    fn from_byte(byte: &u8) -> (BracketType, bool){
-        match byte {
-            &ROUND_OPEN => (BracketType::Round, true),
-            &ROUND_CLOSE => (BracketType::Round, false),
-            &SQUARE_OPEN => (BracketType::Square, true),
-            &SQUARE_CLOSE => (BracketType::Square, false),
-            &CURLY_OPEN => (BracketType::Curly, true),
-            &CURLY_CLOSE => (BracketType::Curly, false),
-            &SHARP_OPEN => (BracketType::Sharp, true),
-            &SHARP_CLOSE => (BracketType::Sharp, false),
-            _ => {panic!("Invalid character")}
-        }
-    }
-
-    fn get_p1_coefficient(&self) -> i64 {
-        match self {
-            BracketType::Round => {3}
-            BracketType::Square => {57}
-            BracketType::Curly => {1197}
-            BracketType::Sharp => {25137}
-        }
-    }
+enum PacketType {
+    OperatorPacket(Vec<Packet>),
+    LiteralValue(u64)
 }
 
-pub fn run(inp: &str) -> i64 {
-    inp.as_bytes().split(|char| char == &('\n' as u8)).map(|line| {
-        let mut stack_index: usize = 0-1;
-        let mut stack: MaybeUninit<[BracketType; 110]> = MaybeUninit::uninit();
-        // let mut stack: [BracketType; 110] = [BracketType::Sharp; 110];
+impl Packet {
+    fn new(buffer: &BitSlice<Msb0, u8>, mut index: &mut usize) -> Self {
+        let version = &buffer[*index..*index+3].to_bitvec().load_be::<u8>().clone();
+        let type_id = &buffer[*index+3..*index+6].to_bitvec().load_be::<u8>().clone();
+        *index += 6;
 
-        let corrupted: Option<BracketType> = line.iter().find_map(|b| unsafe {
-            let (bracket, opening) = BracketType::from_byte(b);
-            if opening {
-                stack_index += 1;
-                *stack.assume_init_mut().get_unchecked_mut(stack_index) = bracket;
-                None
-            } else {
-                if *stack.assume_init().get_unchecked(stack_index) != bracket {
-                    Some(bracket)
-                } else {
-                    stack_index -= 1;
-                    None
+
+        match type_id {
+            4 => {
+                let mut val: u64 = 0;
+                for ch in  buffer[*index..].chunks_exact(5) {
+                    *index += 5;
+                    val = val * 16 + ch[1..5].load_be::<u64>();
+                    if ch[0] == false {
+                        break;
+                    }
+                }
+                Self{
+                    version: version.clone(),
+                    type_id: type_id.clone(),
+                    packet_type: PacketType::LiteralValue(val)
                 }
             }
-        });
 
-        if let Some(b) = corrupted {
-            b.get_p1_coefficient()
-        } else {
-            0i64
+            _ => {
+                let mut packets: Vec<Packet> = vec![];
+                match &buffer[*index] {
+                    false => {
+                        *index += 1;
+                        let arealen = &buffer[*index .. *index + 15].to_bitvec().load_be::<u16>();
+                        *index += 15;
+                        let origind = index.clone();
+
+                        while origind + (*arealen as usize) > *index {
+                            packets.push(Packet::new(buffer, index));
+                        }
+                    }
+                    true => {
+                        *index += 1;
+                        let n_packets = &buffer[*index .. *index + 11].to_bitvec().load_be::<u16>();
+                        *index += 11;
+                        for _ in 0..*n_packets {
+                            packets.push(Packet::new(buffer, index));
+                        }
+
+                    }
+                }
+
+                Self {
+                    version: version.clone(),
+                    type_id: type_id.clone(),
+                    packet_type: PacketType::OperatorPacket(packets)
+                }
+
+            }
         }
-    }).sum()
+    }
 
+    fn sum_versions(&self) -> u64 {
+        let ans = match &self.packet_type {
+            PacketType::OperatorPacket(subpackets) => { subpackets.iter().map(|p| p.sum_versions()).sum() }
+            PacketType::LiteralValue(_) => { 0 }
+        } + self.version as u64;
+        ans
+    }
+
+    fn get_value(&self) -> u64 {
+        match &self.packet_type {
+            PacketType::OperatorPacket(packets) => {
+                match self.type_id {
+                    0 => {
+                        packets.iter().map(|p| p.get_value()).sum()
+                    }
+                    1 => {
+                        let mut ans = 1;
+                        packets.iter().for_each(|p| ans *= p.get_value());
+                        ans
+                    }
+                    2 => {
+                        packets.iter().map(|p| p.get_value()).min().unwrap()
+                    }
+                    3 => {
+                        packets.iter().map(|p| p.get_value()).max().unwrap()
+                    }
+                    5 => {
+                        if packets[0].get_value() > packets[1].get_value() { 1 } else { 0 }
+                    }
+                    6 => {
+                        if packets[0].get_value() < packets[1].get_value() { 1 } else { 0 }
+                    }
+                    7 => {
+                        if packets[0].get_value() == packets[1].get_value() { 1 } else { 0 }
+                    }
+                    _ => {
+                        panic!("Unknown optype")
+                    }
+                }
+
+            }
+            PacketType::LiteralValue(val) => {
+                *val
+            }
+        }
+    }
+}
+
+
+pub fn run(inp: &str) -> i64 {
+    let mut buffer: BitVec<Msb0, u8> = BitVec::new();
+
+    inp.as_bytes().iter().for_each(|ch| {
+        // dbg!(&buffer);
+        if *ch <= ('9' as u8) {
+            let parsed = ch - ('0' as u8);
+            buffer.append(&mut BitVec::<Msb0, u8>::from_element(parsed)[4..].to_bitvec());
+        } else if *ch >= ('A' as u8) {
+            let parsed = ch - ('A' as u8) + 10;
+            buffer.append(&mut BitVec::<Msb0, u8>::from_element(parsed)[4..].to_bitvec());
+        }
+
+    });
+
+    let mut ind = 0;
+    let root = Packet::new(&*buffer, &mut ind);
+    // dbg!(&root);
+    root.sum_versions() as i64
 }

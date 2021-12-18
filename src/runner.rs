@@ -1,9 +1,8 @@
 #![feature(destructuring_assignment)]
 use aoc_runner_derive::aoc_main;
 
-mod day16;
+mod day18;
 aoc_main!{ year = 2021 }
-
 
 
 
@@ -13,13 +12,11 @@ use std::fs;
 
 
 fn main() {
-    let inp = fs::read_to_string("input/2021/day10.txt").expect("Couldn't read file");
+    let inp = fs::read_to_string("input/2021/day16.txt").expect("Couldn't read file");
     let res = elf_benchmarker::run(&*inp);
     println!("Result: {}", res);
 }
 
 
- */
 
-
-
+*/
